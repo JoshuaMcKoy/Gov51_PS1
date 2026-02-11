@@ -1,0 +1,126 @@
+---
+title: "ps1"
+format: pdf
+editor: visual
+---
+
+## 2. Get to Know Your Data {style="line-height: 1.2;"}
+
+1.  **Load the Tidyverse and read in your acs data.**
+
+```{r}
+library(tidyverse)
+acs <- read_csv("data/raw/acs2024.csv")
+```
+
+2.  **Using the IPUMS documentation (online at https://usa.ipums.org), look up what each variable in your dataset means. Pay special attention to TRANTIME (What does a value of 0 mean?) and PERWT (What does this represent?).**
+
+According to the IPUMS website, the 2024 ACS 1-year sample is the American Community Survey from 2024. The variables chosen from this dataset are as described below (the variables with missing information lack readily avaialble explanations on the IPUMS site and, thus, will not be used in analysis):
+
+-   YEAR represents the date each respondent filled out the survey. Since this data is from 2024, all respondents have 2024 as their YEAR variable.
+
+-   SAMPLE tells us which sample the respondent's data was pulled from.
+
+-   SERIAL indicates which household the respondent belongs to.
+
+-   CBSERIAL indicates the unique household identification number, as assigned by the Census Bureau. All persons in a household are assigned the same number.
+
+-   HHWT tells us how many households in the US are represented by a given household in the sample.
+
+-   CLUSTER
+
+-   STATEFIP tells us which state the respondent's household was located, using the Federal Information Processing Standards coding scheme.
+
+-   GQ
+
+-   PERNUM numbers all persons within each household consecutively in the order in which they appear on the original census or survey form.
+
+-   PERWT tells us how many people in the US are represented by a given respondent in the sample.
+
+-   SEX reports the respondent's assigned sex at birth: (1) male or (2) female. (9) is reserved for respondent's with missing/unreported data.
+
+-   AGE reports the respondent's age in years.
+
+-   EDUC tells us the level of education attained by the respondent. Each level is coded numerically as follows: (0) NA or no schooling, (1) Nursery school up to grade 4, (2) Grades 5, 6, 7, or 8, (3) Grade 9, (4) Grade 10, (5) Grade 11, (6) Grade 12, (7) 1 year of college, (8) 2 years of college, (9) 3 years of college, (10), 4 years of college, (11) 5+ years of college, and (99) Missing.
+
+-   EDUCD
+
+-   EMPSTAT reports whether the respondent was a part of the labor force: (0) NA, (1) Employed, (2) Unemployed, (3) Not in the labor force, and (9) Missing.
+
+-   EMPSTATD
+
+-   TRANTIME tells us the total amount of time, in minutes, that it takes the respondent to travel from home to work on average in the past week. A value of 0 means that the data is missing from the data set.
+
+-   INCTOT reports the respondent's total pre-tax income or losses from all sources for the previous year.
+
+3.  **Create new variables from the raw IPUMS codes.**
+
+```{r}
+acs_clean1 <- acs |>
+  mutate(female = if_else(SEX == 2, 1, 0)) |>
+  mutate(less_than_hs = if_else(EDUC <= 2, 1, 0),
+         hs_only = if_else(EDUC %in% c(3, 6), 1, 0),
+         some_college = if_else(EDUC %in% c(7, 9), 1, 0),
+         college_only = if_else(EDUC == 10, 1, 0),
+         advanced_degree = if_else(EDUC == 11, 1, 0)) |>
+  mutate(employed = if_else(EMPSTAT == 1, 1, 0),
+         unemployed = if_else(EMPSTAT == 2, 1, 0),
+         not_in_labor_force = if_else(EMPSTAT == 3, 1, 0))
+```
+
+4.  **Why does this matter? In 2–3 sentences, explain what could go wrong if you accidentally treated “N/A” codes as real zeros when calculating summary statistics. Give a concrete example using one of the variables in your dataset.**
+
+If you accidentally treated "N/A" codes as real zeros when calculating summary statistics then those missing responses would be incorrectly interpreted as meaningful values. For example, since TRANTIME uses 000 to indicate missing data, those zeros should not be used to calculate the average commute time. If they included, they would lower the mean commute time, making it seem like people have shorter average commutes than they actually do.
+
+5.  **Create a summary statistics table for your dataset.**
+
+```{r}
+library(knitr)
+
+acs_clean2 <- acs_clean1 |>
+  mutate(commute_time = if_else(TRANTIME == 000, NA_real_, TRANTIME),
+         income = if_else(INCTOT %in% c(9999998, 9999999), NA_real_, INCTOT))
+
+sumstats <- function(x) {tibble(N = sum(!is.na(x)),
+                                Mean = mean(x, na.rm = TRUE),
+                                "Std. Dev." = sd(x, na.rm = TRUE),
+                                Min = min(x, na.rm = TRUE),
+                                Max = max(x, na.rm = TRUE))}
+
+table1 <- bind_rows(sumstats(acs_clean2$AGE) |>
+                      mutate(Variable = "Age"),
+                    sumstats(acs_clean2$female) |>
+                      mutate(Variable = "Female"),
+                    sumstats(acs_clean2$less_than_hs) |>
+                      mutate(Variable = "Less than High School"),
+                    sumstats(acs_clean2$hs_only) |>
+                      mutate(Variable = "High School Only"),
+                    sumstats(acs_clean2$some_college) |>
+                      mutate(Variable = "Some College"),
+                    sumstats(acs_clean2$college_only) |>
+                      mutate(Variable = "College Only"),
+                    sumstats(acs_clean2$advanced_degree) |>
+                      mutate(Variable = "Advanced Degree"),
+                    sumstats(acs_clean2$employed) |>
+                      mutate(Variable = "Employed"),
+                    sumstats(acs_clean2$unemployed) |>
+                      mutate(Variable = "Unemployed"),
+                    sumstats(acs_clean2$not_in_labor_force) |>
+                      mutate(Variable = "Not in Labor Force"),
+                    sumstats(acs_clean2$commute_time) |>
+                      mutate(Variable = "Commute Time (mins)"),
+                    sumstats(acs_clean2$income) |>
+                      mutate(Variable = "Total Income ($)")) |>
+  select(Variable, N, Mean, "Std. Dev.", Min, Max)
+
+kable(table1,
+      caption = "Table 1: Summary Statistics for 2024 ACS Sample",
+      digits = 2,
+      booktabs = TRUE)
+```
+
+6.  **Does the maximum commute time make sense for a daily commute?**
+
+Though long, the maximum commute time make sense. Its over three hours, which is quite a distance, but especially for people commuting into metropolitan areas, a commute time of this length is definitely not implausible.
+
+## 3. Who Should Be in Your Analysis {style="line-height: 1.2;"}
