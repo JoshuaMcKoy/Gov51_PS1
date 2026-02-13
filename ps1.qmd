@@ -83,6 +83,7 @@ acs_clean2 <- acs_clean1 |>
 
 sumstats <- function(x) {tibble(N = sum(!is.na(x)),
                                 Mean = mean(x, na.rm = TRUE),
+                                Median = median(x, na.rm = TRUE),
                                 "Std. Dev." = sd(x, na.rm = TRUE),
                                 Min = min(x, na.rm = TRUE),
                                 Max = max(x, na.rm = TRUE))}
@@ -111,7 +112,7 @@ table1 <- bind_rows(sumstats(acs_clean2$AGE) |>
                       mutate(Variable = "Commute Time (mins)"),
                     sumstats(acs_clean2$income) |>
                       mutate(Variable = "Total Income ($)")) |>
-  select(Variable, N, Mean, "Std. Dev.", Min, Max)
+  select(Variable, N, Mean, Median, "Std. Dev.", Min, Max)
 
 kable(table1,
       caption = "Table 1: Summary Statistics for 2024 ACS Sample",
@@ -153,9 +154,82 @@ commuters <- acs_clean2 |>
          AGE >= 16)
 ```
 
+My criteria for the commuters variable is to limit the variable to only those that are employed and have a commute time greater than zero (to weed out remote workers). Those with commute times also should inherently be those outside of school, but just to make sure that children were not included in this sample, I filtered for only those above the age of 16.
+
 3.  Verify your subset.
 
 ```{r}
 nrow(commuters)
 min(commuters$commute_time, na.rm = TRUE)
+```
+
+To verify my subset, I tried to find the number of rows (the volume of individual participants) and the minimum transit time. The number of commuters in our dataset is 1,359,943 and their minimum transit time is one minute.
+
+4.  Create a new summary statistics table for your commuters subset, using the same format as your table in Section 2.
+
+```{r}
+table3_4 <- bind_rows(sumstats(commuters$AGE) |>
+                      mutate(Variable = "Age"),
+                    sumstats(commuters$female) |>
+                      mutate(Variable = "Female"),
+                    sumstats(commuters$less_than_hs) |>
+                      mutate(Variable = "Less than High School"),
+                    sumstats(commuters$hs_only) |>
+                      mutate(Variable = "High School Only"),
+                    sumstats(commuters$some_college) |>
+                      mutate(Variable = "Some College"),
+                    sumstats(commuters$college_only) |>
+                      mutate(Variable = "College Only"),
+                    sumstats(commuters$advanced_degree) |>
+                      mutate(Variable = "Advanced Degree"),
+                    sumstats(commuters$employed) |>
+                      mutate(Variable = "Employed"),
+                    sumstats(commuters$unemployed) |>
+                      mutate(Variable = "Unemployed"),
+                    sumstats(commuters$not_in_labor_force) |>
+                      mutate(Variable = "Not in Labor Force"),
+                    sumstats(commuters$commute_time) |>
+                      mutate(Variable = "Commute Time (mins)"),
+                    sumstats(commuters$income) |>
+                      mutate(Variable = "Total Income ($)")) |>
+  select(Variable, N, Mean, Median, "Std. Dev.", Min, Max)
+
+kable(table3_4,
+      caption = "Table 2: Summary Statistics for Commuters in the 2024 ACS Sample",
+      digits = 2,
+      booktabs = TRUE)
+```
+
+## 4. Visualize and Interpret {style="line-height: 1.2;"}
+
+1.  Create a histogram of commuters using ggplot2.
+
+```{r}
+library(ggplot2)
+
+commute_histogram <- ggplot(commuters, aes(x = TRANTIME)) +
+         geom_histogram(binwidth = 5, 
+                        color = "white", 
+                        fill = "pink") +
+         labs(title = "Commute Time Distribution (Min)",
+              x = "Commute Time (Min)",
+              y = "Number of Commuters") +
+  theme_minimal()
+```
+
+2.  In 2–3 sentences, describe what you see: Is it symmetric or skewed? Where is the center?
+    Are there any notable features (e.g., spikes at certain values)?
+
+According to the graph, most commuters are clustered between 10 and 30, with the center seemingly around 20 minutes. There is a noticeable spike around 15 and 30 minutes. Overall, the data is definitely not symmetrical and has a long tail ending around 155 minutes at the maximum commute time.
+
+3.  Compare the mean and median commute time.
+
+From the table, the mean commute time (27.22 minutes) is larger than the median commute time (20 minutes). This tells us that the data is right-skewed, which means that a small number of longer commute times pull the average higher than the center of the data. The numbers here are consistent with the graph.
+
+4.  Save your histogram.
+
+```{r}
+ggsave(filename = "output/commute_histogram.png", 
+       width = 8,
+       height = 5)
 ```
