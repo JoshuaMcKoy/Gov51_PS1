@@ -78,7 +78,7 @@ If you accidentally treated "N/A" codes as real zeros when calculating summary s
 library(knitr)
 
 acs_clean2 <- acs_clean1 |>
-  mutate(commute_time = if_else(TRANTIME == 000, NA_real_, TRANTIME),
+  mutate(commute_time = if_else(TRANTIME %in% c(000, 888), NA_real_, TRANTIME),
          income = if_else(INCTOT %in% c(9999998, 9999999), NA_real_, INCTOT))
 
 sumstats <- function(x) {tibble(N = sum(!is.na(x)),
@@ -124,3 +124,38 @@ kable(table1,
 Though long, the maximum commute time make sense. Its over three hours, which is quite a distance, but especially for people commuting into metropolitan areas, a commute time of this length is definitely not implausible.
 
 ## 3. Who Should Be in Your Analysis {style="line-height: 1.2;"}
+
+1.  Investigate the Data
+
+```{r}
+acs_clean3 <- acs_clean2 |>
+  summarize(total = n(),
+            no_commute = sum(TRANTIME == 0, na.rm = TRUE),
+            percent_zero = 100 * mean(TRANTIME == 0, na.rm = TRUE))
+```
+
+A. A transit time of 000 means that the respondent's data is missing or not relevant. 2,062,945 (60.3%) of the 3,422,888 total respondents had a transit time of 000.
+
+```{r}
+acs_clean2 |>
+  filter(TRANTIME == 000) |>
+  count(EMPSTAT)
+```
+
+B. Most of the respondents without commute times are not in the labor force (3). Of those employed, 248,078 do not commute, and we can, thus, assume that they work from home.
+
+2.  Make your decision.
+
+```{r}
+commuters <- acs_clean2 |>
+  filter(EMPSTAT == 1,
+         commute_time > 0,
+         AGE >= 16)
+```
+
+3.  Verify your subset.
+
+```{r}
+nrow(commuters)
+min(commuters$commute_time, na.rm = TRUE)
+```
