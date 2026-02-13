@@ -4,6 +4,8 @@ format: pdf
 editor: visual
 ---
 
+GitHub Link: [https://github.com/JoshuaMcKoy/Gov51](https://github.com/JoshuaMcKoy/Gov51_PS1)
+
 ## 2. Get to Know Your Data {style="line-height: 1.2;"}
 
 1.  **Load the Tidyverse and read in your acs data.**
@@ -233,3 +235,21 @@ ggsave(filename = "output/commute_histogram.png",
        width = 8,
        height = 5)
 ```
+
+## 5. The Weight of Evidence {style="line-height: 1.2;"}
+
+1.  Calculate the weighted mean.
+
+```{r}
+weighted.mean(commuters$TRANTIME, commuters$PERWT)
+```
+
+The weighted mean commute time for commuters is 27.19 minutes.
+
+2.  Compare: Is the weighted mean different from the unweighted mean you calculated earlier? By how much?
+
+The unweighted mean for the same population is 27.22 minutes, which is just a few seconds longer than the weighted mean (27.19 minutes).
+
+3.  In 2–3 sentences, explain what each number represents and why they might differ.
+
+The unweighted mean is the average commute time for commuters in our sample, while the weighted mean is the average commute time for the US population. The weighted average uses the PERWT variable to account for how many people each respondent in our sample represents. Given that both values are incredibly similar, I would say that the sample is fairly representative of the national distribution of commite times.
